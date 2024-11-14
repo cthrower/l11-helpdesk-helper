@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HelpDesk Helper</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f4f4f4;
+        margin: 0;
+        padding: 20px;
+        text-align: center;
+      }
+
+      h1 {
+        color: #333;
+      }
+
+      p,
+      ul,
+      li {
+        text-align: left;
+        font-size: 14px;
+        color: #666;
+      }
+
+      #buttons {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        flex-wrap: nowrap;
+        margin-top: 20px;
+      }
+
+      button {
+        background-color: #4caf50;
+        color: white;
+        padding: 10px 20px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 16px;
+        margin: 4px 2px;
+        cursor: pointer;
+        border-radius: 12px;
+        border: none;
+        transition: background-color 0.3s ease;
+        flex: 1;
+      }
+
+      #summary, #rewrite {
+        background-color: blue;
+      }
+
+      button:hover {
+        background-color: #45a049;
+      }
+
+      #result.loading::before {
+        content: "Loading...";
+        display: block;
+        font-size: 16px;
+        color: #888;
+      }
+
+      #result {
+        font-size: 14px;
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      img#loading {
+        margin-top: 20px;
+      }
+
+      #apiKeyForm {
+        padding: 20px;
+        text-align: left;
+      }
+      
+      .input-group {
+        margin-bottom: 15px;
+      }
+      
+      .input-group label {
+        display: block;
+        margin-bottom: 5px;
+      }
+      
+      .input-group input {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+      
+      #saveKeys {
+        width: 100%;
+        background-color: #4caf50;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="apiKeyForm" class="hidden">
+      <h2>API Key Setup</h2>
+      <p>Please enter your API keys to continue:</p>
+      <div class="input-group">
+        <label for="phonelyKey">Phonely API Key:</label>
+        <input type="password" id="phonelyKey" required>
+      </div>
+      <div class="input-group">
+        <label for="sbfKey">SBF API Key:</label>
+        <input type="password" id="sbfKey" required>
+      </div>
+      <button id="saveKeys">Save Keys</button>
+    </div>
+
+    <div id="mainContent" class="hidden">
+      <h1>HelpDesk Helper</h1>
+      <p>Please choose an option below.</p>
+      <ul>
+        <li>
+          <strong>Generate Email:</strong> This option will generate a complete
+          email based on the existing notes in the ticket.
+        </li>
+        <li>
+          <strong>Summarise:</strong> This will generate a summary of the notes on
+          this account along with a suggested next step.
+        </li>
+      </ul>
+
+      <div id="buttons">
+        <button id="generate">Generate Email</button>
+        <button id="summary">Summarise</button>
+      </div>
+
+      <img
+        src="/icons/loading.svg"
+        id="loading"
+        alt="Loading, please wait..."
+        width="75px"
+        class="hidden"
+      />
+    </div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
