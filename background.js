@@ -207,18 +207,6 @@ async function getOpenAIEmail() {
     }
 }
 
-function getRecipName(){
-    return new Promise((resolve, reject) => {
-        chrome.storage.local.get(['recipientName'], function(result) {
-            if (chrome.runtime.lastError) {
-                console.error('Error getting content from storage:', chrome.runtime.lastError);
-                reject(chrome.runtime.lastError);
-            } else {
-                resolve(result.recipientName || []);
-            }
-        });
-    });
-}
 
 
 // the following functions all retrieve the corresponding content from chrome storage
@@ -315,6 +303,27 @@ async function stripHtml(input) {
 // Listen for messages from content.js requesting html strip
 // message.data is stripped and stored in plainText
 
+async function getURL() {
+
+    const tabs = await new Promise((resolve, reject) => {
+        chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
+            if (chrome.runtime.lastError) {
+                reject(chrome.runtime.lastError);
+            } else {
+                resolve(tabs);
+            }
+        });
+    });
+    
+    const tab = tabs[0];
+    const url = tab.url;
+
+    return url
+}
+
+
+
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === "stripHtml" && message.data) {
         stripHtml(message.data)
@@ -327,14 +336,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                             "Error setting ticketContents to " + JSON.stringify(plainText) +
                             ": " + chrome.runtime.lastError.message
                         );
-                    } 
+                    } else {
+                        console.log("Content stored successfully!");
+                    }
                 });
+
+                chrome.runtime.sendMessage({action: 'stripComplete'})
         
             })
             .catch((error) => sendResponse({ error: error.message }));
         return true; // Indicates that the response will be sent asynchronously
     }
 });
+
 
 
 function handleUrlChange(details) {

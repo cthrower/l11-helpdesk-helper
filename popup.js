@@ -79,3 +79,19 @@ document.getElementById('summary').addEventListener('click', () => {
     });
 });
 
+
+const button1 = document.getElementById('generate');
+const button2 = document.getElementById('summary');
+
+button1.disabled = true
+button2.disabled = true
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action === "stripComplete") {
+        console.log("stripHtml operation has completed.")
+        button1.disabled = false
+        button2.disabled = false
+    }
+})
+
+

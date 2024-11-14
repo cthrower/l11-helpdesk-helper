@@ -119,7 +119,6 @@ observer.observe(document.body, { childList: true, subtree: true });
 
 async function getContent() {
     const entryBodies = document.querySelectorAll('.article-content');
-    //console.log("is this the right thing?", entryBodies)
 
     let ticketContents = []
 
@@ -202,6 +201,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if(request.action === "urlChanged") {
         observer.disconnect();
         initialize();
+        chrome.storage.local.remove('content')
     }
 
 });
@@ -214,13 +214,12 @@ async function showSummaryPopup(content){
 }
 
 function createEmail(emailContent) {
+
     const buttonBars = document.querySelectorAll('div.js-article-actions');
 
     const lastButtonBar = buttonBars[buttonBars.length - 1];
 
     const replyButton = lastButtonBar?.querySelector('a[data-type="emailReply"]');
-
-    console.log("yo", replyButton);
 
     replyButton.focus(); // Focus the button
     const mouseDownEvent = new MouseEvent("mousedown", { bubbles: true });
@@ -228,4 +227,33 @@ function createEmail(emailContent) {
     replyButton.dispatchEvent(mouseDownEvent);
     replyButton.dispatchEvent(mouseUpEvent);
     replyButton.click(); // Trigger the click
+
+    const observer = new MutationObserver((mutations, obs) => {
+            
+        const emailEditorDiv = document.querySelector('div.textBubble > div[contenteditable="true"]');
+        console.log("what's in this div?", emailEditorDiv)
+        if (emailEditorDiv) {
+            const formattedEmailContent = `
+            <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+                ${emailContent
+                    .split('\n')
+                    .filter(line => line.trim() !== '')
+                    .map(line => `<p>${line}</p>`)
+                    .join('')}
+            </div>
+            `;
+            emailEditorDiv.innerHTML = formattedEmailContent;
+        } else {
+
+            obs.disconnect()
+        }
+
+        if(emailEditorDiv){
+            obs.disconnect();
+        }
+    });
+
+     observer.observe(document.body, { childList: true, subtree: true });
+
+
 }
