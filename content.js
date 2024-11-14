@@ -213,50 +213,19 @@ async function showSummaryPopup(content){
 
 }
 
-// function that clicks reply button and inserts reply content
-
 function createEmail(emailContent) {
-    // Define the selector for the container of the dynamically added elements
-    const buttonBarContainerSelector = 'div.js-article-actions';
+    const buttonBars = document.querySelectorAll('div.js-article-actions');
 
-    // Function to check and click the reply button
-    const checkAndClickReplyButton = () => {
-        const buttonBars = document.querySelectorAll(buttonBarContainerSelector);
-        const lastButtonBar = buttonBars[buttonBars.length - 1];
-        
-        if (!lastButtonBar) {
-            console.error('Button bar not found');
-            return;
-        }
+    const lastButtonBar = buttonBars[buttonBars.length - 1];
 
-        const replyButton = lastButtonBar.querySelector('a[data-type="emailReply"]');
-        console.log("yo", replyButton);
+    const replyButton = lastButtonBar?.querySelector('a[data-type="emailReply"]');
 
-        if (replyButton) {
-            // Prevent default behavior and click the reply button
-            replyButton.addEventListener('click', (e) => {
-                e.preventDefault();
-                console.log("default behaviour prevented");
-            });
+    console.log("yo", replyButton);
 
-            replyButton.click();
-            console.log("reply button clicked!");
-
-            // Disconnect the observer after finding and clicking the button
-            observer.disconnect();
-        } else {
-            console.error('Reply button not found');
-        }
-    };
-
-    // Set up the MutationObserver to monitor the document body for added elements
-    const observer = new MutationObserver(() => {
-        checkAndClickReplyButton();
-    });
-
-    // Start observing with childList and subtree options to capture dynamically added elements
-    observer.observe(document.body, { childList: true, subtree: true });
-
-    // Initial check in case the element is already loaded
-    checkAndClickReplyButton();
+    replyButton.focus(); // Focus the button
+    const mouseDownEvent = new MouseEvent("mousedown", { bubbles: true });
+    const mouseUpEvent = new MouseEvent("mouseup", { bubbles: true });
+    replyButton.dispatchEvent(mouseDownEvent);
+    replyButton.dispatchEvent(mouseUpEvent);
+    replyButton.click(); // Trigger the click
 }
