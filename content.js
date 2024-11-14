@@ -216,51 +216,47 @@ async function showSummaryPopup(content){
 // function that clicks reply button and inserts reply content
 
 function createEmail(emailContent) {
-    const buttonBars = document.querySelectorAll('div.js-article-actions');
-    const lastButtonBar = buttonBars[buttonBars.length - 1]
-    const replyButton = lastButtonBar.querySelector('a[data-type="emailReply"]')
-    console.log("yo", replyButton)
+    // Define the selector for the container of the dynamically added elements
+    const buttonBarContainerSelector = 'div.js-article-actions';
 
+    // Function to check and click the reply button
+    const checkAndClickReplyButton = () => {
+        const buttonBars = document.querySelectorAll(buttonBarContainerSelector);
+        const lastButtonBar = buttonBars[buttonBars.length - 1];
+        
+        if (!lastButtonBar) {
+            console.error('Button bar not found');
+            return;
+        }
 
-    if (replyButton) {
+        const replyButton = lastButtonBar.querySelector('a[data-type="emailReply"]');
+        console.log("yo", replyButton);
 
-        replyButton.addEventListener('click', (e) => {
-            e.preventDefault()
-            console.log("default behaviour prevented")
-        })
+        if (replyButton) {
+            // Prevent default behavior and click the reply button
+            replyButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log("default behaviour prevented");
+            });
 
-        replyButton.click();
-        console.log("reply button clicked!")
+            replyButton.click();
+            console.log("reply button clicked!");
 
-        /*const observer = new MutationObserver((mutations, obs) => {
-            
-            const emailEditorDiv = document.querySelector('div.textBubble > div[contenteditable="true"]');
-            console.log("what's in this div?", emailEditorDiv)
-            if (emailEditorDiv) {
-                const formattedEmailContent = `
-                <div style="font-family: Arial, sans-serif; line-height: 1.6;">
-                    ${emailContent
-                        .split('\n')
-                        .filter(line => line.trim() !== '')
-                        .map(line => `<p>${line}</p>`)
-                        .join('')}
-                </div>
-                `;
-                emailEditorDiv.innerHTML = formattedEmailContent;
-            } else {
+            // Disconnect the observer after finding and clicking the button
+            observer.disconnect();
+        } else {
+            console.error('Reply button not found');
+        }
+    };
 
-                obs.disconnect()
-            }
+    // Set up the MutationObserver to monitor the document body for added elements
+    const observer = new MutationObserver(() => {
+        checkAndClickReplyButton();
+    });
 
-            if(emailEditorDiv){
-                obs.disconnect();
-            }
-        });*/
+    // Start observing with childList and subtree options to capture dynamically added elements
+    observer.observe(document.body, { childList: true, subtree: true });
 
-        observer.observe(document.body, { childList: true, subtree: true });
-    } else {
-        console.error('Reply button not found');
-    }
+    // Initial check in case the element is already loaded
+    checkAndClickReplyButton();
 }
-
-
