@@ -44,7 +44,7 @@ document.getElementById('generate').addEventListener('click', () => {
     document.getElementById('loading').classList.remove('hidden');
 
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        chrome.tabs.sendMessage(tabs[0].id, { action: "createThreadRun"}, function(response) {
+        chrome.tabs.sendMessage(tabs[0].id, { action: "createRun"}, function(response) {
 
             if (chrome.runtime.lastError) {
                 console.error('Runtime error:', chrome.runtime.lastError);
@@ -86,38 +86,6 @@ document.getElementById('summary').addEventListener('click', () => {
     });
 });
 
-const button1 = document.getElementById('generate');
-const button2 = document.getElementById('summary');
-const progressMessage = document.getElementById('progress-message');
 
-
-// Initially disable buttons
-button1.disabled = true;
-button2.disabled = true;
-progressMessage.style.display = "block"
-
-// Check the state from chrome.storage when the popup opens
-chrome.storage.local.get("stripComplete", (result) => {
-    if (result.stripComplete) {
-        console.log("stripHtml operation was already completed.");
-        button1.disabled = false;
-        button2.disabled = false;
-        progressMessage.style.display = "none"
-
-    }
-});
-
-// Listen for real-time updates if the message arrives while the popup is open
-chrome.runtime.onMessage.addListener((message) => {
-    if (message.action === "stripComplete") {
-        console.log("stripHtml operation has completed.");
-        button1.disabled = false;
-        button2.disabled = false;
-        progressMessage.style.display = "none"
-
-        // Optionally clear the state in storage
-        chrome.storage.local.remove("stripComplete");
-    }
-});
 
 

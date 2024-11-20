@@ -123,19 +123,17 @@ async function getContent() {
     let ticketContents = []
 
     entryBodies.forEach(entrybody => {
-        
         const allHTML = entrybody.outerHTML
         ticketContents.push(allHTML)
-    
     })
 
+    console.log("this is data ripped from page", ticketContents)
+
     try {
-
-        chrome.runtime.sendMessage({ action: "stripHtml", data: ticketContents })
-
+        chrome.runtime.sendMessage({action: "dataTransfer"})
+        chrome.storage.local.set({content: ticketContents})
     } catch (error) {
-
-        console.error("Error during HTML stripping:", error);
+        console.error("Error setting content to chrome local storage:", error);
     }
 
 }
@@ -144,7 +142,7 @@ async function getContent() {
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
-    if (request.action === "createThreadRun") {
+    if (request.action === "createRun") {
 
         try{
             chrome.runtime.sendMessage({ action: "generateEmail" }, function(response) {
@@ -237,4 +235,5 @@ function createEmail(emailContent) {
     });
 
     observer.observe(document.body, { childList: true, subtree: true });
+
 }
