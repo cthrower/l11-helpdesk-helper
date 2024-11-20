@@ -6,14 +6,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     console.log("The action currently being executed is: ", message.action)
 
-    // Generate an email via openAI
-    // getOpenAIEmail() called and once resolved, sends response back containing generated email
-
-    if (message.action === "generateEmail")  {
-        getOpenAIEmail()
-            .then(generatedEmail => {
-                
-                sendResponse({ email: generatedEmail });
+    // Generate a response via openAI
+    if (message.action === "generateEmail") {
+        createThreadRun(message.messageContent)
+            .then(result => checkStatus(result))
+            .then(finalResult =>{
+                const finalMessage = finalResult.data[0].content[0].text.value
+                console.log("Output of message:", finalMessage)
+                sendResponse({messages: finalMessage})
             })
             .catch(error => {
                 sendResponse({ error: error.message });
@@ -36,7 +36,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 
 async function getOpenAISummary(){
-    const apiKey = await getApiKey();
+    const activeCompany = await getCompany();
+    const apiKey = await getApiKey(activeCompany);
     const apiUrl = 'https://api.openai.com/v1/chat/completions';
 
     try {
@@ -83,10 +84,6 @@ async function getOpenAISummary(){
             const data = await response.json();
             const generatedText = data.choices[0].message.content.trim();
     
-            // Parse the response to separate the subject line and email body
-            console.log('What is generated text?', generatedText);
-            
-    
             return generatedText;
 
         }
@@ -96,118 +93,134 @@ async function getOpenAISummary(){
     }
 }
 
-let activeCompany = null;
 
-function retrieveActiveCompany() {
-    return new Promise((resolve) => {
-        chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-            if (message.action === "updateActiveCompany") {
-                activeCompany = message.data;
-                console.log("are you there?", message)
-                resolve(activeCompany);
-            }
-        });
-    });
+
+async function createThreadRun(messageContent) {
+    try {
+        const activeCompany = await getCompany();
+        const apiKey = await getApiKey(activeCompany);
+        const ticketContent = await getPageData();
+
+        if (!apiKey){
+            console.log("No API key in storage brev")
+        }
+
+        const assistantId = "asst_vV6nYgVC4qn7TTvm6g8vA7T2"
+
+        const messageContent = [
+            {role: "user", content: `Please generate me a professional response to the information in these tickets. Here is the content: ${ticketContent}`}
+        ]
+
+        const apiUrl = 'https://api.openai.com/v1/threads/runs'
+        const response = await fetch(apiUrl, {
+            method: "POST",
+            headers: {
+
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${apiKey}`,
+                "OpenAI-Beta": "assistants=v2"
+            },
+            body: JSON.stringify({
+                assistant_id: assistantId,
+                thread:{
+                    messages: messageContent,
+                }
+            })
+        })
+
+        if (!response.ok){
+            const errorData = await response.json();
+            throw new Error(`Error from OpenAI API: ${errorData.error.message}`)
+        }
+
+        const data = await response.json()
+        return data;
+
+    } catch (error) {
+        console.error("Error in createThreadRun", error.message)
+        throw error
+
+    }
 }
 
-function getCompany() {
-    return new Promise((resolve, reject) => {
-        chrome.storage.local.get(['companyData'], function(result) {
-            if (chrome.runtime.lastError) {
-                console.error('Error getting content from storage:', chrome.runtime.lastError);
-                reject(chrome.runtime.lastError);
-            } else {
-                resolve(result.companyData || []);
-            }
-        });
-    });
-}
-
-
-
-async function getOpenAIEmail() {
+async function checkStatus(data) {
+    const { id, thread_id } = data;
 
     try {
-        const companyName = await getCompany();    
-        console.log("company name is:", companyName)
-        const apiKey = await getApiKey(companyName);
-        const apiUrl = 'https://api.openai.com/v1/chat/completions';
-        const ticketContent = await getPageData();
-        //const recipientName = await getRecipName();
+        const activeCompany = await getCompany();
+        const apiKey = await getApiKey(activeCompany);
+        const apiUrl = `https://api.openai.com/v1/threads/${thread_id}/runs/${id}`;
 
-        // Fetch the prompt with a Promise to ensure it is fully loaded before proceeding
-        const prompt = await new Promise(async (resolve, reject) => {
-            try {
-                let result;
-                if (companyName && companyName==='Phonely Support') {
-                    result = await fetchPrompts(1);
-                } else (companyName && companyName==='SwitchboardFREE Support'); {
-                    result = await fetchPrompts(2);
-                } 
 
-                if (result) {
-                    resolve(result);
-                } else {
-                    reject(new Error('Could not load prompt template'));
-                }
-            } catch (error) {
-                reject(error);
-            }
-        });
-
-        
-
-        const requestBody = {
-            model: "gpt-4o-mini",
-            messages: [{ role: "user", content: prompt + ticketContent + `start email with 'Hi there,'`}],
-            max_completion_tokens: 1000,
-            temperature: 0.8
-        };
-
-        // Test if in test mode or not
-        const testMode = await new Promise((resolve, reject) => {
-            chrome.storage.local.get(['testMode'], function(result) {
-                if (chrome.runtime.lastError) {
-                    reject(chrome.runtime.lastError);
-                } else {
-                    resolve(result.testMode);
-                }
-            });
-        });
-
-        if (testMode === true) {
-            // Testing, return some test data
-            const subjectLine = 'Test Subject Line';
-            const emailBody = 'Here\'s some random email body';
-            return { subjectLine, emailBody };
-        } else {
+        const fetchStatus = async () => {
             const response = await fetch(apiUrl, {
-                method: 'POST',
+                method: "GET",
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${apiKey}`,
+                    "OpenAI-Beta": "assistants=v2",
                 },
-                body: JSON.stringify(requestBody)
             });
 
             if (!response.ok) {
-                throw new Error(`OpenAI API request failed with status ${response.status}`);
+                throw new Error(`Failed to fetch thread status: ${response.statusText}`);
             }
 
-            const data = await response.json();
-            const generatedText = data.choices[0].message.content.trim();
+            const updatedData = await response.json();
+            return updatedData.status;
+        };
 
-            console.log("email content", generatedText)
+        // Polling logic to check status
+        let updatedStatus;
+        do {
+            updatedStatus = await fetchStatus();
+            if (updatedStatus !== "completed") {
+                await new Promise(resolve => setTimeout(resolve, 200)); // Pause before retrying
+            }
+        } while (updatedStatus !== "completed");
 
-            return generatedText;
-        }
+        console.log("Status is completed");
+
+        return listMessages(data);
+
     } catch (error) {
-        console.error('Error generating email:', error);
+        console.error("Error in checking status:", error.message);
         throw error;
     }
 }
 
 
+async function listMessages(data) {
+
+    const {thread_id} = data;
+
+    try{
+        const activeCompany = await getCompany();
+        const apiKey = await getApiKey(activeCompany);
+        const apiUrl =  `https://api.openai.com/v1/threads/${thread_id}/messages`
+        const response = await fetch(apiUrl, {
+
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${apiKey}`,
+              "OpenAI-Beta": "assistants=v2", 
+            },
+        })
+
+        if (!response.ok){
+            throw new Error(`Failed to fetch thread status: ${response.statusText}`)
+        }
+        
+        const updatedData = await response.json()
+        return updatedData
+    }
+    catch (error) {
+        console.error("Error in listing messages", error.message)
+        throw error
+
+    }
+}
 
 // the following functions all retrieve the corresponding content from chrome storage
 
@@ -224,17 +237,17 @@ function getPageData() {
     });
 }
 
-function getEmailContent(){
+function getCompany() {
     return new Promise((resolve, reject) => {
-        chrome.storage.local.get(['emailContent'], function(result) {
+        chrome.storage.local.get(['companyData'], function(result) {
             if (chrome.runtime.lastError) {
-                console.error('Error getting email content from storage:', chrome.runtime.lastError);
+                console.error('Error getting content from storage:', chrome.runtime.lastError);
                 reject(chrome.runtime.lastError);
             } else {
-                resolve(result.emailContent || []);
+                resolve(result.companyData || []);
             }
         });
-    })
+    });
 }
 
 function getApiKey(companyName) {
@@ -291,8 +304,6 @@ async function stripHtml(input) {
 
     if (!response.ok) {
         throw new Error(`OpenAI API request failed with status ${response.status}`);
-
-
     }
 
     const responseData = await response.json();
@@ -321,9 +332,6 @@ async function getURL() {
     return url
 }
 
-
-
-
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === "stripHtml" && message.data) {
         stripHtml(message.data)
@@ -341,15 +349,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                     }
                 });
 
-                chrome.runtime.sendMessage({action: 'stripComplete'})
+                chrome.storage.local.set({stripComplete: true}, () => {
+                    console.log("stripComplete status saved to storage")
+                    chrome.runtime.sendMessage({action: "stripComplete"})
+                })
+
         
             })
             .catch((error) => sendResponse({ error: error.message }));
         return true; // Indicates that the response will be sent asynchronously
     }
 });
-
-
 
 function handleUrlChange(details) {
     chrome.tabs.sendMessage(details.tabId, { action: "urlChanged" });
@@ -395,3 +405,5 @@ async function fetchPrompts(number) {
         }
     }
 }
+
+

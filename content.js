@@ -140,40 +140,16 @@ async function getContent() {
 
 }
 
-
-
-
-function getEmail(){
-    return new Promise((resolve, reject) => {
-        const emailEditorDiv = document.querySelector('div.articleNewEdit-body div[contenteditable="true"]');
-        if (emailEditorDiv) {
-            const emailContent = emailEditorDiv.innerHTML.trim();
-
-            chrome.storage.local.set({ emailContent: emailContent}, function() {
-                if (chrome.runtime.lastError) {
-                    console.error(
-                        "Error setting email content to " + JSON.stringify(emailContent) +
-                        ": " + chrome.runtime.lastError.message
-                    );
-                    reject(chrome.runtime.lastError);
-                } else {
-                    resolve(emailContent);
-                }
-            })
-        }
-    })
-}
-
 // Listen for messages from popup.js - this is when button is clicked on popup
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
-    if (request.action === "CheckContentAndGenerateEmail") {
+    if (request.action === "createThreadRun") {
 
         try{
             chrome.runtime.sendMessage({ action: "generateEmail" }, function(response) {
-                createEmail(response.email);
-                sendResponse({ email: response.email });
+                createEmail(response.messages);
+                sendResponse({ email: response.messages });
             });
 
         } catch (error) {
@@ -188,7 +164,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         try{
             chrome.runtime.sendMessage({ action: "generateSummary" }, function(response) {
                 showSummaryPopup(response.generatedSummary);
-                sendResponse({ summary: response.generatedSummary });
+                //sendResponse({ summary: response.generatedSummary });
             });
 
         } catch (error) {
@@ -213,12 +189,11 @@ async function showSummaryPopup(content){
 
 }
 
+// function that presses the reply button and actually pastes the content in
 function createEmail(emailContent) {
 
     const buttonBars = document.querySelectorAll('div.js-article-actions');
-
     const lastButtonBar = buttonBars[buttonBars.length - 1];
-
     const replyButton = lastButtonBar?.querySelector('a[data-type="emailReply"]');
 
     replyButton.focus(); // Focus the button
@@ -231,7 +206,6 @@ function createEmail(emailContent) {
     const observer = new MutationObserver((mutations, obs) => {
             
         const emailEditorDiv = document.querySelector('div.textBubble > div[contenteditable="true"]');
-        console.log("what's in this div?", emailEditorDiv)
         if (emailEditorDiv) {
             const formattedEmailContent = `
             <div style="font-family: Arial, sans-serif; line-height: 1.6;">
@@ -243,17 +217,24 @@ function createEmail(emailContent) {
             </div>
             `;
             emailEditorDiv.innerHTML = formattedEmailContent;
-        } else {
 
-            obs.disconnect()
-        }
+            emailEditorDiv.style.display = 'none';
+            emailEditorDiv.offsetHeight; // Trigger reflow
+            emailEditorDiv.style.display = '';
 
-        if(emailEditorDiv){
+            const inputEvent = new Event('input', { bubbles: true });
+            const blurEvent = new Event('blur', { bubbles: true });
+            emailEditorDiv.dispatchEvent(inputEvent);
+            emailEditorDiv.dispatchEvent(blurEvent);
+
+            // Notify that the email has been inserted
+            chrome.runtime.sendMessage({ action: "emailInserted" });
+            console.log("Email content inserted and message sent.");
+
             obs.disconnect();
-        }
+
+        } 
     });
 
-     observer.observe(document.body, { childList: true, subtree: true });
-
-
+    observer.observe(document.body, { childList: true, subtree: true });
 }
