@@ -45,6 +45,7 @@ document.getElementById('generate').addEventListener('click', () => {
 
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         chrome.tabs.sendMessage(tabs[0].id, { action: "createRun"}, function(response) {
+            console.log("create run response", response)
 
             if (chrome.runtime.lastError) {
                 console.error('Runtime error:', chrome.runtime.lastError);
@@ -56,16 +57,21 @@ document.getElementById('generate').addEventListener('click', () => {
                 window.close();
             }
 
-            chrome.runtime.onMessage.addListener((message) => {
-                if(message.action === "emailInserted"){
-                    console.log("Email inserted, closing popup...")
-                    window.close()
-                }
-            })
+
         });
     });
 
 });
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    console.log("yasss queen", message, sender, sendResponse)
+    if(message.action === "emailInserted"){
+        console.log("Email inserted, closing popup...")
+        window.close()
+    }
+})
+
+
 
 document.getElementById('summary').addEventListener('click', () => {
     document.getElementById('buttons').classList.add('hidden');

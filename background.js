@@ -2,27 +2,29 @@ chrome.storage.local.set({ testMode: false }, function() {
     console.log('Test Mode Stored');
 });
 
-chrome.runtime.onMessage.addListener((message, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     console.log("The action currently being executed is: ", message.action)
 
     // Generate a response via openAI
     if (message.action === "generateEmail") {
-        const data = getThreadId()
-        createRun(data)
-            .then(result => {
-                console.log("output of run", result)
-                checkStatus(result)})
-            .then(finalResult =>{
-                const finalMessage = finalResult.data[0].content[0].text.value
-                console.log("Output of message:", finalMessage)
-                sendResponse({messages: finalMessage})
+        getThreadId()
+            .then(data => createRun(data))
+            .then(result => checkStatus(result))
+            .then(finalResult => {
+                const finalMessage = finalResult.data[0].content[0].text.value;
+                console.log("Output of message:", finalMessage);
+                sendResponse({ messages: finalMessage });
             })
             .catch(error => {
+                console.error("Error:", error.message);
                 sendResponse({ error: error.message });
             });
-        return true
+
+        // Returning true indicates sendResponse will be used asynchronously
+        return true;
     }
+
 
     // Generate a summary via openAI
     if(message.action === "generateSummary"){
@@ -183,7 +185,7 @@ function getUnstrippedData() {
     });
 }
 
-function getThreadId() {
+async function getThreadId() {
     return new Promise((resolve, reject) => {
         chrome.storage.local.get(['threadId'], function(result) {
             if (chrome.runtime.lastError) {
@@ -202,28 +204,27 @@ async function createThread() {
         const activeCompany = await getCompany();
         const apiKey = await getApiKey(activeCompany);
         const pageContent = await getUnstrippedData();
-        console.log("this is page shit", pageContent)
 
         if (!apiKey){
             console.log("No API key in storage brev")
         }
 
-        const apiUrl = 'https://api.openai.com/v1/threads/'
+        const apiUrl = 'https://api.openai.com/v1/threads'
         const response = await fetch(apiUrl, {
             method: "POST",
             headers: {
 
                 "Content-Type": "application/json",
-                Authorization: `Bearer ${apiKey}`
+                Authorization: `Bearer ${apiKey}`,
+                "OpenAI-Beta": "assistants=v2"
 
-            }
-            /*body: JSON.stringify({
+            },
+            body: JSON.stringify({
                 messages : [{role: "user", content: `this is the unstripped page data: ${pageContent}`}]
-            })*/
+            })
         })
 
         const data = await response.json()
-        console.log("this is output from thread", data)
         return data
 
     } catch (error){
@@ -237,8 +238,7 @@ chrome.runtime.onMessage.addListener((message, sendResponse) => {
 
         createThread()
             .then((threadOutput) => {
-                console.log("Thread output ready:", threadOutput);
-
+                
                 // Save `threadOutput` and `threadOutput.id` into separate Chrome storage keys simultaneously
                 Promise.all([
                     new Promise((resolve, reject) => {
@@ -256,7 +256,7 @@ chrome.runtime.onMessage.addListener((message, sendResponse) => {
                         });
                     }),
                     new Promise((resolve, reject) => {
-                        chrome.storage.local.set({ threadId: threadOutput.thread_id}, function () {
+                        chrome.storage.local.set({ threadId: threadOutput.id}, function () {
                             if (chrome.runtime.lastError) {
                                 console.error(
                                     "Error setting threadId to " + threadOutput.id +
@@ -284,9 +284,7 @@ chrome.runtime.onMessage.addListener((message, sendResponse) => {
 });
 
 
-async function createRun(data) {
-
-    const {thread_id} = data;
+async function createRun(id) {
 
     try{
         const activeCompany = await getCompany();
@@ -296,14 +294,9 @@ async function createRun(data) {
             console.log("No API key in storage brev")
         }
 
-        const assistantId = "asst_vV6nYgVC4qn7TTvm6g8vA7T2"
-        
-        const messageContent = [
-            {role: "user", content: `Please generate me a professional response to the information in these tickets. All the content is already in this thread.`}
-        ]
+        const assistantId = "asst_kgPA0NV8OCD7LSkoTho02JQq"
 
-        const apiUrl = `https://api.openai.com/v1/threads/${thread_id}/runs`
-        console.log("api url and thread id", apiUrl, thread_id)
+        const apiUrl = `https://api.openai.com/v1/threads/${id}/runs`
         const response = await fetch(apiUrl, {
             method: "POST",
             headers: {
@@ -313,9 +306,7 @@ async function createRun(data) {
             },
             body: JSON.stringify({
                 assistant_id: assistantId,
-                thread:{
-                    messages: messageContent,
-                }
+                
             })
         })
 
@@ -364,8 +355,6 @@ async function checkStatus(data) {
             }
         } while (updatedStatus !== "completed");
 
-        console.log("Status is completed");
-
         return listMessages(data);
 
     } catch (error) {
@@ -407,73 +396,6 @@ async function listMessages(data) {
     }
 }
 
-// async function stripHtml(input) {
-//     const company = 'Phonely Support';
-//     const apiKey = await getApiKey(company);
-//     const apiUrl = 'https://api.openai.com/v1/chat/completions';
-
-//     const prompt = `Strip all of the html that I pass you, and just return the plain text. Here is the data: ${input}`;
-
-//     const requestBody = {
-//         model: "gpt-4o-mini",
-//         messages: [{ role: "user", content: prompt }],
-//         max_tokens: 1000,
-//         temperature: 0.8
-//     };
-
-//     // response is what comes back from OpenAI API call 
-
-//     const response = await fetch(apiUrl, {
-//         method: 'POST',
-//         headers: {
-//             'Content-Type': 'application/json',
-//             'Authorization': `Bearer ${apiKey}`
-//         },
-//         body: JSON.stringify(requestBody)
-//     });
-
-//     if (!response.ok) {
-//         throw new Error(`OpenAI API request failed with status ${response.status}`);
-//     }
-
-//     const responseData = await response.json();
-
-//     return responseData.choices[0].message.content;   // this picks out actual plain text returned from OpenAI
-// }
-
-
-// chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-//     if (message.action === "contentTransfer" && message.data) {
-
-//         // CHANGE BELOW
-
-//         stripHtml(message.data)
-//             .then((plainText) => {
-//                 console.log("ready", plainText)
-
-//                 chrome.storage.local.set({ content: plainText }, function() {
-//                     if (chrome.runtime.lastError) {
-//                         console.error(
-//                             "Error setting ticketContents to " + JSON.stringify(plainText) +
-//                             ": " + chrome.runtime.lastError.message
-//                         );
-//                     } else {
-//                         console.log("Content stored successfully!");
-//                     }
-//                 });
-
-//                 chrome.storage.local.set({stripComplete: true}, () => {
-//                     console.log("stripComplete status saved to storage")
-//                     chrome.runtime.sendMessage({action: "stripComplete"})
-//                 })
-
-        
-//             })
-//             .catch((error) => sendResponse({ error: error.message }));
-//         return true; // Indicates that the response will be sent asynchronously
-//     }
-// });
-
 function handleUrlChange(details) {
     chrome.tabs.sendMessage(details.tabId, { action: "urlChanged" });
 }
@@ -481,42 +403,5 @@ function handleUrlChange(details) {
 chrome.webNavigation.onHistoryStateUpdated.addListener(handleUrlChange);
 chrome.webNavigation.onCompleted.addListener(handleUrlChange);
 chrome.webNavigation.onReferenceFragmentUpdated.addListener(handleUrlChange);
-
-// Configuration object for Pastebin IDs and refresh intervals
-const CONFIG = {
-    PASTEBIN_IDS: {
-        phonely: 'LftVi4su',
-        sbf: 'uA637yCQ',
-    },
-   
-    PASTEBIN_API_KEY: 'JX-QgtqXr8JMRqc6DmuGwhSi78LGW2_n'
-};
-
-// Function to fetch prompts from Pastebin
-async function fetchPrompts(number) {
-    try {
-        //let phonelyPrompt;
-        switch(number) {
-            case 1:
-                const response = await fetch(`https://pastebin.com/raw/${CONFIG.PASTEBIN_IDS.phonely}?v=${Date.now()}`);
-                const phonelyPrompt = await response.text();
-                return phonelyPrompt
-                break;
-            case 2:
-                const response2 = await fetch(`https://pastebin.com/raw/${CONFIG.PASTEBIN_IDS.sbf}?v=${Date.now()}`);
-                const sbfPrompt = await response2.text();
-                return sbfPrompt
-                break;  
-        }
-        console.log('Prompts updated successfully');
-    } catch (error) {
-        console.error('Error fetching prompts:', error);
-        // If fetch fails, try to use cached prompts
-        const cached = await chrome.storage.local.get(['phonelyPrompt', 'sbfPrompt']);
-        if (!cached.phonelyPrompt || !cached.sbfPrompt) {
-            throw new Error('No cached prompts available');
-        }
-    }
-}
 
 

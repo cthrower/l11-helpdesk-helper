@@ -12,7 +12,6 @@
   ],
   "host_permissions": [
     "https://api.openai.com/",
-    "https://pastebin.com/",
     "https://helpdesk.liquid11.co.uk/"
   ],
   "background": {

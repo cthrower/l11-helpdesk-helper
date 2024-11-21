@@ -127,7 +127,6 @@ async function getContent() {
         ticketContents.push(allHTML)
     })
 
-    console.log("this is data ripped from page", ticketContents)
 
     try {
         chrome.runtime.sendMessage({action: "dataTransfer"})
@@ -147,7 +146,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         try{
             chrome.runtime.sendMessage({ action: "generateEmail" }, function(response) {
                 createEmail(response.messages);
-                sendResponse({ email: response.messages });
+                sendResponse({status:true})
             });
 
         } catch (error) {
@@ -162,7 +161,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         try{
             chrome.runtime.sendMessage({ action: "generateSummary" }, function(response) {
                 showSummaryPopup(response.generatedSummary);
-                //sendResponse({ summary: response.generatedSummary });
             });
 
         } catch (error) {
@@ -230,6 +228,7 @@ function createEmail(emailContent) {
             console.log("Email content inserted and message sent.");
 
             obs.disconnect();
+            
 
         } 
     });
