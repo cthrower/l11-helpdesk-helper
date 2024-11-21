@@ -202,7 +202,7 @@ async function createThread() {
         const activeCompany = await getCompany();
         const apiKey = await getApiKey(activeCompany);
         const pageContent = await getUnstrippedData();
-        console.log("this is page shitt", pageContent)
+        console.log("this is page shit", pageContent)
 
         if (!apiKey){
             console.log("No API key in storage brev")
@@ -216,10 +216,10 @@ async function createThread() {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${apiKey}`
 
-            },
-            body: JSON.stringify({
+            }
+            /*body: JSON.stringify({
                 messages : [{role: "user", content: `this is the unstripped page data: ${pageContent}`}]
-            })
+            })*/
         })
 
         const data = await response.json()
