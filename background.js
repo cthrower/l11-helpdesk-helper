@@ -62,7 +62,7 @@ async function createSummaryRun(id){
 
         const prompt = `IDENTITY You are an all-knowing AI with a 476 I.Q. that deeply understands concepts. GOAL You create concise summaries of--or answers to--arbitrary input. STEPS Deeply understand the input. Think for 912 virtual minutes about the meaning of the input. Create a virtual mindmap of the meaning of the content in your mind. Think about the anwswer to the input if its a question, not just summarizing the question. OUTPUT Output a title of "Automated Summary", followed by one section called "Summary" that perfectly capture the true essence of the input, its answer, and/or its meaning, up-to 50 words. OUTPUT FORMAT Output the summary as short, concise text. NOTE: Do not just make the sentences shorter. Reframe the meaning as best as possible for each depth level. Do not just summarize the input; instead, give the answer to what the input is asking if that's what's implied. Additionally, include a summary of suggested next steps at the end - the suggested next steps should be for our internal sales team and how they should handle this lead. Using this prompt, craft me a summary of the following ticket notes: \n\n${pageContent}\n\n`
 
-        const assistantId = "asst_kgPA0NV8OCD7LSkoTho02JQq"
+        const assistantId = await getAssistantId(activeCompany)
 
         const response = await fetch(apiUrl, {
             method: "POST",
@@ -130,22 +130,19 @@ function getApiKey(companyName) {
     });
 }
 
-async function getURL() {
+async function getAssistantId(companyName) {
 
-    const tabs = await new Promise((resolve, reject) => {
-        chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
-            if (chrome.runtime.lastError) {
-                reject(chrome.runtime.lastError);
-            } else {
-                resolve(tabs);
-            }
-        });
-    });
+    let assistant_id;
+
+    if(companyName==="SwitchboardFREE Support"){
+        assistant_id = "asst_kgPA0NV8OCD7LSkoTho02JQq"
+    }
+    else{
+        assistant_id = "asst_2cCcI0Ohtf2LL0EpfHun6VUo"
+
+    }
     
-    const tab = tabs[0];
-    const url = tab.url;
-
-    return url
+    return assistant_id;
 }
 
 function getUnstrippedData() {
@@ -270,7 +267,7 @@ async function createRun(id) {
             console.log("No API key in storage brev")
         }
 
-        const assistantId = "asst_kgPA0NV8OCD7LSkoTho02JQq"
+        const assistantId = await getAssistantId(activeCompany)
 
         const apiUrl = `https://api.openai.com/v1/threads/${id}/runs`
         const response = await fetch(apiUrl, {
