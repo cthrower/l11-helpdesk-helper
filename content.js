@@ -115,7 +115,6 @@ const observer = new MutationObserver((mutations) => {
 observer.observe(document.body, { childList: true, subtree: true });
 
 // retrieves content from page, BEFORE being stripped
-// then calls stripping function
 
 async function getContent() {
     const entryBodies = document.querySelectorAll('.article-content');
@@ -160,7 +159,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
         try{
             chrome.runtime.sendMessage({ action: "generateSummary" }, function(response) {
-                showSummaryPopup(response.generatedSummary);
+                showSummaryPopup(response.messages);
             });
 
         } catch (error) {

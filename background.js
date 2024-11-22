@@ -28,70 +28,59 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     // Generate a summary via openAI
     if(message.action === "generateSummary"){
-        getOpenAISummary()
-            .then(generatedSummary => {
-                sendResponse({ generatedSummary });                
+
+        getThreadId()
+            .then(data => createSummaryRun(data))
+            .then(result => checkStatus(result))
+            .then(finalResult => {
+                const finalMessage = finalResult.data[0].content[0].text.value;
+                console.log("Output of message:", finalMessage);
+                sendResponse({ messages: finalMessage });            
             })
             .catch(error => {
+                console.error("Error:", error.message);
                 sendResponse({ error: error.message });
             });
+
         return true
     }    
 });
 
 
-async function getOpenAISummary(){
-    const activeCompany = await getCompany();
-    const apiKey = await getApiKey(activeCompany);
-    const apiUrl = 'https://api.openai.com/v1/chat/completions';
+async function createSummaryRun(id){
 
     try {
-        const ticketContent = await getPageData();
-
-        const prompt = `IDENTITY You are an all-knowing AI with a 476 I.Q. that deeply understands concepts. GOAL You create concise summaries of--or answers to--arbitrary input. STEPS Deeply understand the input. Think for 912 virtual minutes about the meaning of the input. Create a virtual mindmap of the meaning of the content in your mind. Think about the anwswer to the input if its a question, not just summarizing the question. OUTPUT Output a title of "Automated Summary", followed by one section called "Summary" that perfectly capture the true essence of the input, its answer, and/or its meaning, up-to 50 words. OUTPUT FORMAT Output the summary as short, concise text. NOTE: Do not just make the sentences shorter. Reframe the meaning as best as possible for each depth level. Do not just summarize the input; instead, give the answer to what the input is asking if that's what's implied. Additionally, include a summary of suggested next steps at the end - the suggested next steps should be for our internal sales team and how they should handle this lead. Using this prompt, craft me a summary of the following ticket notes: \n\n${ticketContent}\n\n`
-
-        const requestBody = {
-            model: "gpt-4o-mini",
-            messages: [{ role: "user", content: prompt }],
-            max_completion_tokens: 1000,
-            temperature: 0.8
-        };
-
-        // Tests whether test mode is active or not
-        const testMode = await new Promise((resolve, reject) => {
-            chrome.storage.local.get(['testMode'], function(result) {
-                if (chrome.runtime.lastError) {
-                    reject(chrome.runtime.lastError);
-                } else {
-                    resolve(result.testMode);
-                }
-            });
-        });
-
-        if(testMode === true){
-            // Testing, return some test data
-            const summary = 'Here is some random summary';
-            return {summary};
-        } else { 
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`
-                },
-                body: JSON.stringify(requestBody)
-            });
+        const activeCompany = await getCompany();
+        const apiKey = await getApiKey(activeCompany);
+        const pageContent = await getUnstrippedData();
     
-            if (!response.ok) {
-                throw new Error(`OpenAI API request failed with status ${response.status}`);
-            }
-    
-            const data = await response.json();
-            const generatedText = data.choices[0].message.content.trim();
-    
-            return generatedText;
-
+        if (!apiKey){
+            console.log("No API key in storage brev")
         }
+    
+        const apiUrl = `https://api.openai.com/v1/threads/${id}/runs`;
+
+        const prompt = `IDENTITY You are an all-knowing AI with a 476 I.Q. that deeply understands concepts. GOAL You create concise summaries of--or answers to--arbitrary input. STEPS Deeply understand the input. Think for 912 virtual minutes about the meaning of the input. Create a virtual mindmap of the meaning of the content in your mind. Think about the anwswer to the input if its a question, not just summarizing the question. OUTPUT Output a title of "Automated Summary", followed by one section called "Summary" that perfectly capture the true essence of the input, its answer, and/or its meaning, up-to 50 words. OUTPUT FORMAT Output the summary as short, concise text. NOTE: Do not just make the sentences shorter. Reframe the meaning as best as possible for each depth level. Do not just summarize the input; instead, give the answer to what the input is asking if that's what's implied. Additionally, include a summary of suggested next steps at the end - the suggested next steps should be for our internal sales team and how they should handle this lead. Using this prompt, craft me a summary of the following ticket notes: \n\n${pageContent}\n\n`
+
+        const assistantId = "asst_kgPA0NV8OCD7LSkoTho02JQq"
+
+        const response = await fetch(apiUrl, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${apiKey}`,
+                "OpenAI-Beta": "assistants=v2"
+            },
+            body: JSON.stringify({
+                assistant_id: assistantId,
+                instructions: prompt
+                
+            })
+        })
+
+        const data = await response.json()
+        return data
+        
     } catch (error) {
         console.error('Error generating email:', error);
         throw error;
@@ -100,19 +89,6 @@ async function getOpenAISummary(){
 
 
 // the following functions all retrieve the corresponding content from chrome storage
-
-// function getPageData() {
-//     return new Promise((resolve, reject) => {
-//         chrome.storage.local.get(['content'], function(result) {
-//             if (chrome.runtime.lastError) {
-//                 console.error('Error getting content from storage:', chrome.runtime.lastError);
-//                 reject(chrome.runtime.lastError);
-//             } else {
-//                 resolve(result.content || []);
-//             }
-//         });
-//     });
-// }
 
 function getCompany() {
     return new Promise((resolve, reject) => {
