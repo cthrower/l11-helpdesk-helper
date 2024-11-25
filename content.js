@@ -189,20 +189,34 @@ async function showSummaryPopup(content){
 
 // function that presses the reply button and actually pastes the content in
 function createEmail(emailContent) {
-
     const buttonBars = document.querySelectorAll('div.js-article-actions');
-    const lastButtonBar = buttonBars[buttonBars.length - 1];
-    const replyButton = lastButtonBar?.querySelector('a[data-type="emailReply"]');
 
-    replyButton.focus(); // Focus the button
+    // Find the first button bar with a reply button, starting from the last one
+    let replyButton = null;
+    for (let i = buttonBars.length - 1; i >= 0; i--) {
+        const currentReplyButton = buttonBars[i]?.querySelector('a[data-type="emailReply"]');
+        if (currentReplyButton) {
+            replyButton = currentReplyButton;
+            console.log("is this the right button?", replyButton)
+            break; 
+        }
+    }
+
+    if (!replyButton) {
+        console.error("No reply button found in any button bar.");
+        return; 
+    }
+
+    // Focus and click the reply button
+    replyButton.focus();
     const mouseDownEvent = new MouseEvent("mousedown", { bubbles: true });
     const mouseUpEvent = new MouseEvent("mouseup", { bubbles: true });
     replyButton.dispatchEvent(mouseDownEvent);
     replyButton.dispatchEvent(mouseUpEvent);
-    replyButton.click(); // Trigger the click
+    replyButton.click();
 
+    // Set up the MutationObserver
     const observer = new MutationObserver((mutations, obs) => {
-            
         const emailEditorDiv = document.querySelector('div.textBubble > div[contenteditable="true"]');
         if (emailEditorDiv) {
             const formattedEmailContent = `
@@ -217,7 +231,7 @@ function createEmail(emailContent) {
             emailEditorDiv.innerHTML = formattedEmailContent;
 
             emailEditorDiv.style.display = 'none';
-            emailEditorDiv.offsetHeight; // Trigger reflow
+            emailEditorDiv.offsetHeight; 
             emailEditorDiv.style.display = '';
 
             const inputEvent = new Event('input', { bubbles: true });
@@ -230,11 +244,9 @@ function createEmail(emailContent) {
             console.log("Email content inserted and message sent.");
 
             obs.disconnect();
-            
-
-        } 
+        }
     });
 
     observer.observe(document.body, { childList: true, subtree: true });
-
 }
+
