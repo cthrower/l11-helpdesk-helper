@@ -1,9 +1,9 @@
-let buttonClicked = false; // Flag to track if the button has been clicked
 let hasActiveCompanyBeenCalled  = false;
 
 function initialize() {
+    console.log("you work brev")
     clickViewMoreButtons().then(() => {
-        debouncedGetContent();
+        debouncedGetContent(); 
 
     });
 
@@ -11,13 +11,14 @@ function initialize() {
 }
 
 function getActiveCompany() {
+
     return new Promise((resolve) => {
 
         if(hasActiveCompanyBeenCalled){
+            
             console.log("getActiveCompany already called")
             resolve();
             return;
-
         }
 
         const activeCompany = document.querySelectorAll('div.controls > div.dropdown--actions > div.dropdown-toggle > input.js-input')
@@ -33,7 +34,7 @@ function getActiveCompany() {
         if(activeCompany && activeCompany.length>0){
 
             chrome.storage.local.set({ companyData: activeCompany[0].title }, function(){
-                console.log("active company sent", activeCompany)
+                console.log("active company sent", activeCompany[0].title)
             })
 
         }else {
@@ -44,27 +45,27 @@ function getActiveCompany() {
         observer.disconnect();
         resolve();
     })
-
-    
 }
 
-
 function clickViewMoreButtons() {
+    let buttonClicked = false; 
+
     return new Promise((resolve) => {
+
         // Check if the button has already been clicked
         if (buttonClicked) {
             resolve();
             return;
         }
 
-        let viewMoreButtons = document.querySelectorAll('.textBubble-overflowContainer .js-toggleFold');
+        let viewMoreButtons = Array.from(document.querySelectorAll('.textBubble-overflowContainer:not(.hide) .js-toggleFold'));
 
         if (viewMoreButtons.length === 0) {
             resolve();
             return;
         }
 
-        viewMoreButtons.forEach(button => {
+        viewMoreButtons.filter(f => f.innerText == 'See more').forEach(button => {
             button.click();
         });
 
@@ -171,10 +172,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     if(request.action === "urlChanged") {
         observer.disconnect();
-        initialize();
         chrome.storage.local.remove('content')
-    }
+        chrome.storage.local.remove('companyData')
+        hasActiveCompanyBeenCalled = false;
+        initialize();
 
+    }
 });
 
 // function to trigger summary popup. Argument will be summary provided by getOpenAiSummary()
