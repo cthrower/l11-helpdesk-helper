@@ -87,8 +87,48 @@ async function createSummaryRun(id){
     }
 }
 
-// the following functions all retrieve the corresponding content from chrome storage
+async function getEmailRun(id){
 
+    try {
+        const activeCompany = await getCompany();
+        const apiKey = await getApiKey(activeCompany);
+        const pageContent = await getUnstrippedData();
+    
+        if (!apiKey){
+            console.log("No API key in storage brev")
+        }
+    
+        const apiUrl = `https://api.openai.com/v1/threads/${id}/runs`;
+
+        const prompt = `These are the ticket notes \n\n${pageContent}\n\n. Within this, search for text that says: 'Email Address:'. Then return the email address that follows this in a plain text format.`
+
+        const assistantId = await getAssistantId(activeCompany)
+
+        const response = await fetch(apiUrl, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${apiKey}`,
+                "OpenAI-Beta": "assistants=v2"
+            },
+            body: JSON.stringify({
+                assistant_id: assistantId,
+                instructions: prompt
+                
+            })
+        })
+
+        const data = await response.json()
+        return data
+        
+    } catch (error) {
+        console.error('Error fetching email address:', error);
+        throw error;
+    }
+}
+
+
+// the following functions all retrieve the corresponding content from chrome storage
 function getCompany() {
     return new Promise((resolve, reject) => {
         chrome.storage.local.get(['companyData'], function(result) {
