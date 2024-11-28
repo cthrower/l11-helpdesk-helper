@@ -189,6 +189,11 @@ async function showSummaryPopup(content){
 
 // function that presses the reply button and actually pastes the content in
 function createEmail(emailContent) {
+
+    const ticketTitleDiv = document.querySelector('.ticket-title-update.js-objectTitle');
+    const emailTitle = ticketTitleDiv.textContent
+
+
     const buttonBars = document.querySelectorAll('div.js-article-actions');
 
     // Find the first button bar with a reply button, starting from the last one
@@ -218,6 +223,9 @@ function createEmail(emailContent) {
     // Set up the MutationObserver
     const observer = new MutationObserver((mutations, obs) => {
         const emailEditorDiv = document.querySelector('div.textBubble > div[contenteditable="true"]');
+        const recipientDiv = document.querySelector(`.token-input.ui-autocomplete-input`)
+
+
         if (emailEditorDiv) {
             const formattedEmailContent = `
             <div style="font-family: Arial, sans-serif; line-height: 1.6;">

@@ -82,11 +82,10 @@ async function createSummaryRun(id){
         return data
         
     } catch (error) {
-        console.error('Error generating email:', error);
+        console.error('Error generating summary:', error);
         throw error;
     }
 }
-
 
 // the following functions all retrieve the corresponding content from chrome storage
 
