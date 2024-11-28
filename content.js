@@ -145,7 +145,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
         try{
             chrome.runtime.sendMessage({ action: "generateEmail" }, function(response) {
-                createEmail(response.messages);
+                createEmail(response.message1, response.message2);
                 sendResponse({status:true})
             });
 
@@ -188,7 +188,7 @@ async function showSummaryPopup(content){
 }
 
 // function that presses the reply button and actually pastes the content in
-function createEmail(emailContent) {
+function createEmail(emailContent, emailAddress) {
 
     const ticketTitleDiv = document.querySelector('.ticket-title-update.js-objectTitle');
     const emailTitle = ticketTitleDiv.textContent
@@ -224,6 +224,13 @@ function createEmail(emailContent) {
     const observer = new MutationObserver((mutations, obs) => {
         const emailEditorDiv = document.querySelector('div.textBubble > div[contenteditable="true"]');
         const recipientDiv = document.querySelector(`.token-input.ui-autocomplete-input`)
+
+        if (emailTitle.includes("Support message")){
+            recipientDiv.innerText = emailAddress
+        }
+        else{
+            //do nothing
+        }
 
 
         if (emailEditorDiv) {

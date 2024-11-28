@@ -7,23 +7,41 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.log("The action currently being executed is: ", message.action)
 
     // Generate a response via openAI
-    if (message.action === "generateEmail") {
-        getThreadId()
-            .then(data => createRun(data))
-            .then(result => checkStatus(result))
-            .then(finalResult => {
-                const finalMessage = finalResult.data[0].content[0].text.value;
-                console.log("Output of message:", finalMessage);
-                sendResponse({ messages: finalMessage });
-            })
-            .catch(error => {
-                console.error("Error:", error.message);
-                sendResponse({ error: error.message });
-            });
+if (message.action === "generateEmail") {
+    getThreadId()
+        .then(data => {
+            // Call both functions in parallel
+            return Promise.all([createRun(data), getEmailRun(data)]);
+        })
+        .then(results => {
+            // Process both results through checkStatus
+            return Promise.all(results.map(result => checkStatus(result)));
+        })
+        .then(finalResults => {
+            // Handle final results from both promises
+            const finalMessage1 = finalResults[0].data[0].content[0].text.value;
+            const finalMessage2 = finalResults[1].data[0].content[0].text.value;
 
-        // Returning true indicates sendResponse will be used asynchronously
-        return true;
-    }
+            console.log("Output of message 1:", finalMessage1);
+            console.log("Output of message 2:", finalMessage2);
+
+            // You can modify the response to include both messages if needed
+            sendResponse({
+                messages: {
+                    message1: finalMessage1,
+                    message2: finalMessage2
+                }
+            });
+        })
+        .catch(error => {
+            console.error("Error:", error.message);
+            sendResponse({ error: error.message });
+        });
+
+    // Returning true indicates sendResponse will be used asynchronously
+    return true;
+}
+
 
 
     // Generate a summary via openAI
