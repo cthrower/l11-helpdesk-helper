@@ -1,7 +1,6 @@
 let hasActiveCompanyBeenCalled  = false;
 
 function initialize() {
-    console.log("you work brev")
     clickViewMoreButtons().then(() => {
         debouncedGetContent(); 
 
@@ -143,17 +142,39 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     if (request.action === "createRun") {
 
-        try{
-            chrome.runtime.sendMessage({ action: "generateEmail" }, function(response) {
-                createEmail(response.message1, response.message2);
-                sendResponse({status:true})
-            });
+        const ticketTitleDiv = document.querySelector('.ticket-title-update.js-objectTitle');
+        const emailTitle = ticketTitleDiv.textContent;
+        let isSupportMessage = false;
 
-        } catch (error) {
-            console.log("error creating email", error)
-            throw error
+        if (emailTitle.includes("Support message")){
+            console.log("are you running?")
+            isSupportMessage = true;
+
+            try{
+                chrome.runtime.sendMessage({ action: "generateEmail", data: isSupportMessage }, function(response) {
+                    createEmail(response.messages?.content ?? '', response.messages?.email ?? '');
+                    sendResponse({status:true})
+                });
+    
+            } catch (error) {
+                console.log("error creating email", error)
+                throw error
+            }
+
+        }    
+        else{
+
+            try{
+                chrome.runtime.sendMessage({ action: "generateEmail", data: isSupportMessage }, function(response) {
+                    createEmail(response.messages);
+                    sendResponse({status:true})
+                });
+    
+            } catch (error) {
+                console.log("error creating email", error)
+                throw error
+            }
         }
-        
     }
 
     if (request.action === "CheckContentAndGenerateSummary") {
@@ -190,9 +211,7 @@ async function showSummaryPopup(content){
 // function that presses the reply button and actually pastes the content in
 function createEmail(emailContent, emailAddress) {
 
-    const ticketTitleDiv = document.querySelector('.ticket-title-update.js-objectTitle');
-    const emailTitle = ticketTitleDiv.textContent
-
+    console.log('create the email', emailContent, emailAddress)
 
     const buttonBars = document.querySelectorAll('div.js-article-actions');
 
@@ -220,16 +239,18 @@ function createEmail(emailContent, emailAddress) {
     replyButton.dispatchEvent(mouseUpEvent);
     replyButton.click();
 
+
+
     // Set up the MutationObserver
     const observer = new MutationObserver((mutations, obs) => {
+
         const emailEditorDiv = document.querySelector('div.textBubble > div[contenteditable="true"]');
         const recipientDiv = document.querySelector(`.token-input.ui-autocomplete-input`)
+        const removeEmailButton = document.querySelector(`.token > a.close`)
 
-        if (emailTitle.includes("Support message")){
-            recipientDiv.innerText = emailAddress
-        }
-        else{
-            //do nothing
+        if (recipientDiv) {
+            removeEmailButton.click();
+            recipientDiv.value = emailAddress
         }
 
 
@@ -257,6 +278,9 @@ function createEmail(emailContent, emailAddress) {
             // Notify that the email has been inserted
             chrome.runtime.sendMessage({ action: "emailInserted" });
             console.log("Email content inserted and message sent.");
+
+
+    
 
             obs.disconnect();
         }

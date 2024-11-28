@@ -7,42 +7,47 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.log("The action currently being executed is: ", message.action)
 
     // Generate a response via openAI
-if (message.action === "generateEmail") {
-    getThreadId()
-        .then(data => {
-            // Call both functions in parallel
-            return Promise.all([createRun(data), getEmailRun(data)]);
-        })
-        .then(results => {
-            // Process both results through checkStatus
-            return Promise.all(results.map(result => checkStatus(result)));
-        })
-        .then(finalResults => {
-            // Handle final results from both promises
-            const finalMessage1 = finalResults[0].data[0].content[0].text.value;
-            const finalMessage2 = finalResults[1].data[0].content[0].text.value;
+    if (message.action === "generateEmail") {
+    
+        try {
+            getThreadId()
+            .then(data => { 
+                createRun(data)
+                    .then(res => {
+                        checkStatus(res)
+                            .then(finalResult => {
+                                const emailContent = finalResult.data[0].content[0].text.value;
+                                console.log('email content', emailContent)
 
-            console.log("Output of message 1:", finalMessage1);
-            console.log("Output of message 2:", finalMessage2);
+                                if(message.data === true){
+                                    getEmailRun(data)
+                                    .then(result => checkStatus(result))
+                                    .then(emailAdd => {
+                                        const emailToSendTo = emailAdd.data[0].content[0].text.value;
+                                        console.log("Email address to send to:", emailToSendTo);
 
-            // You can modify the response to include both messages if needed
-            sendResponse({
-                messages: {
-                    message1: finalMessage1,
-                    message2: finalMessage2
-                }
+                                        sendResponse({ messages: { content: emailContent, email: emailToSendTo } });
+                                    })
+                                } else {
+                                    const finalMessage = 
+                                    console.log("Output of message:", finalMessage);
+                                    sendResponse({ messages: { content: emailContent, email: 'xxx' }});
+                                }
+                            })
+                    })
+            })
+            .catch(error => {
+                console.error("Error:", error.message);
+                sendResponse({ error: error.message });
             });
-        })
-        .catch(error => {
-            console.error("Error:", error.message);
-            sendResponse({ error: error.message });
-        });
 
-    // Returning true indicates sendResponse will be used asynchronously
-    return true;
-}
+        } catch(err) {
+            console.error('erro br0', err)
+        }
 
-
+        // Returning true indicates sendResponse will be used asynchronously
+        return true;
+    }
 
     // Generate a summary via openAI
     if(message.action === "generateSummary"){
@@ -61,7 +66,24 @@ if (message.action === "generateEmail") {
             });
 
         return true
-    }    
+    }
+
+    if(message.action === "getEmailAddress"){
+        getThreadId()
+            .then(data => getEmailRun(data))
+            .then(result => checkStatus(result))
+            .then(finalResult => {
+                const finalMessage = finalResult.data[0].content[0].text.value;
+                console.log("Email address (hopefully):", finalMessage);
+                sendResponse({ extractedEmail: finalMessage });
+            })
+            .catch(error => {
+                console.error("Error:", error.message);
+                sendResponse({ error: error.message });
+            });
+
+        return true;    
+    }
 });
 
 
@@ -118,7 +140,7 @@ async function getEmailRun(id){
     
         const apiUrl = `https://api.openai.com/v1/threads/${id}/runs`;
 
-        const prompt = `These are the ticket notes \n\n${pageContent}\n\n. Within this, search for text that says: 'Email Address:'. Then return the email address that follows this in a plain text format.`
+        const prompt = `These are the ticket notes \n\n${pageContent}\n\n. Within this, search for text that says: 'Email Address:'. Then return the email address that follows this in a plain text format. Return only the email address and nothing else.`
 
         const assistantId = await getAssistantId(activeCompany)
 
@@ -145,8 +167,8 @@ async function getEmailRun(id){
     }
 }
 
-
 // the following functions all retrieve the corresponding content from chrome storage
+
 function getCompany() {
     return new Promise((resolve, reject) => {
         chrome.storage.local.get(['companyData'], function(result) {
