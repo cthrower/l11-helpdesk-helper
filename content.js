@@ -146,7 +146,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         const emailTitle = ticketTitleDiv.textContent;
         let isSupportMessage = false;
 
-        if (emailTitle.includes("Support message")){
+        if (emailTitle.includes("Support message") || emailTitle.includes("FW:") || emailTitle.includes("Fw:")){
             console.log("are you running?")
             isSupportMessage = true;
 
@@ -166,7 +166,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
             try{
                 chrome.runtime.sendMessage({ action: "generateEmail", data: isSupportMessage }, function(response) {
-                    createEmail(response.messages);
+                    createEmail(response.messages?.content ?? '', response.messages?.email ?? '');
                     sendResponse({status:true})
                 });
     
@@ -249,8 +249,13 @@ function createEmail(emailContent, emailAddress) {
         const removeEmailButton = document.querySelector(`.token > a.close`)
 
         if (recipientDiv) {
-            removeEmailButton.click();
-            recipientDiv.value = emailAddress
+            if (removeEmailButton){
+                removeEmailButton.click();
+                recipientDiv.value = emailAddress
+            } else {
+                recipientDiv.value = emailAddress
+            }
+
         }
 
 

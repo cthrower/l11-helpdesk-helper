@@ -29,8 +29,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                                         sendResponse({ messages: { content: emailContent, email: emailToSendTo } });
                                     })
                                 } else {
-                                    const finalMessage = 
-                                    console.log("Output of message:", finalMessage);
+                                    console.log("There is no email to strip")
                                     sendResponse({ messages: { content: emailContent, email: 'xxx' }});
                                 }
                             })
@@ -140,7 +139,7 @@ async function getEmailRun(id){
     
         const apiUrl = `https://api.openai.com/v1/threads/${id}/runs`;
 
-        const prompt = `These are the ticket notes \n\n${pageContent}\n\n. Within this, search for text that says: 'Email Address:'. Then return the email address that follows this in a plain text format. Return only the email address and nothing else.`
+        const prompt = `These are the ticket notes \n\n${pageContent}\n\n. Within this, search for text that says: 'Email Address:'. Then return the email address that follows this in a plain text format. Return only the email address and nothing else. If you find more than one email address, return the first one and nothing else.`
 
         const assistantId = await getAssistantId(activeCompany)
 
