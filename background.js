@@ -66,23 +66,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         return true
     }
-
-    if(message.action === "getEmailAddress"){
-        getThreadId()
-            .then(data => getEmailRun(data))
-            .then(result => checkStatus(result))
-            .then(finalResult => {
-                const finalMessage = finalResult.data[0].content[0].text.value;
-                console.log("Email address (hopefully):", finalMessage);
-                sendResponse({ extractedEmail: finalMessage });
-            })
-            .catch(error => {
-                console.error("Error:", error.message);
-                sendResponse({ error: error.message });
-            });
-
-        return true;    
-    }
 });
 
 
