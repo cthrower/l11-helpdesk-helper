@@ -2,50 +2,45 @@ chrome.storage.local.set({ testMode: false }, function() {
     console.log('Test Mode Stored');
 });
 
+async function handleGenerateEmail(message) {
+    try{
+        const threadId = await getThreadId();
+        const runResponse = await createRun(threadId);
+        const finalResult = await checkStatus(runResponse);
+
+        const emailContent = finalResult.data[0].content[0].text.value
+        console.log('email content:', emailContent)
+
+        if (message.data === true){
+            const emailRunResponse = await getEmailRun(threadId);
+            const emailResult = await checkStatus(emailRunResponse);
+
+            const emailToSendTo = emailResult.data[0].content[0].text.value
+            console.log('Email to send to', emailToSendTo)
+
+            return {content: emailContent, email: emailToSendTo}
+        } else{
+            console.log("There is no email to strip")
+            return {content: emailContent, email: 'xxx'}
+        }
+
+    } catch (error) {
+        console.error("Error:", error.message)
+        throw new Error(error.message)
+    }
+}
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     console.log("The action currently being executed is: ", message.action)
 
     // Generate a response via openAI
     if (message.action === "generateEmail") {
-    
-        try {
-            getThreadId()
-            .then(data => { 
-                createRun(data)
-                    .then(res => {
-                        checkStatus(res)
-                            .then(finalResult => {
-                                const emailContent = finalResult.data[0].content[0].text.value;
-                                console.log('email content', emailContent)
+        handleGenerateEmail(message)
+            .then(response => sendResponse({messages: response}))
+            .catch(error => sendResponse({error: error.message}))
 
-                                if(message.data === true){
-                                    getEmailRun(data)
-                                    .then(result => checkStatus(result))
-                                    .then(emailAdd => {
-                                        const emailToSendTo = emailAdd.data[0].content[0].text.value;
-                                        console.log("Email address to send to:", emailToSendTo);
-
-                                        sendResponse({ messages: { content: emailContent, email: emailToSendTo } });
-                                    })
-                                } else {
-                                    console.log("There is no email to strip")
-                                    sendResponse({ messages: { content: emailContent, email: 'xxx' }});
-                                }
-                            })
-                    })
-            })
-            .catch(error => {
-                console.error("Error:", error.message);
-                sendResponse({ error: error.message });
-            });
-
-        } catch(err) {
-            console.error('erro br0', err)
-        }
-
-        // Returning true indicates sendResponse will be used asynchronously
-        return true;
+        return true
     }
 
     // Generate a summary via openAI
@@ -67,7 +62,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return true
     }
 });
-
 
 async function createSummaryRun(id){
 
