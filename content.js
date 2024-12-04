@@ -146,23 +146,41 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         const emailTitle = ticketTitleDiv.textContent;
         let isSupportMessage = false;
 
-        if (emailTitle.includes("Support message") || emailTitle.includes("FW:") || emailTitle.includes("Fw:")){
-            console.log("are you running?")
-            isSupportMessage = true;
+        const activeCompanyToggle = document.querySelectorAll('div.controls > div.dropdown--actions > div.dropdown-toggle > input.js-input')
+        const activeCompany = activeCompanyToggle[0].title
 
-            try{
-                chrome.runtime.sendMessage({ action: "generateEmail", data: isSupportMessage }, function(response) {
-                    createEmail(response.messages?.content ?? '', response.messages?.email ?? '');
-                    sendResponse({status:true})
-                });
+        if (activeCompany === 'Phonely Support') {
+
+            if (emailTitle.includes("Support message") || emailTitle.includes("FW:") || emailTitle.includes("Fw:")){
+                isSupportMessage = true;
     
-            } catch (error) {
-                console.log("error creating email", error)
-                throw error
+                try{
+                    chrome.runtime.sendMessage({ action: "generateEmail", data: isSupportMessage }, function(response) {
+                        createEmail(response.messages?.content ?? '', response.messages?.email ?? '');
+                        sendResponse({status:true})
+                    });
+        
+                } catch (error) {
+                    console.log("error creating email", error)
+                    throw error
+                }
+    
+            }    
+            else{
+    
+                try{
+                    chrome.runtime.sendMessage({ action: "generateEmail", data: isSupportMessage }, function(response) {
+                        createEmail(response.messages?.content ?? '', response.messages?.email ?? '');
+                        sendResponse({status:true})
+                    });
+        
+                } catch (error) {
+                    console.log("error creating email", error)
+                    throw error
+                }
             }
 
-        }    
-        else{
+        } else if (activeCompany === 'SwitchboardFREE Support'){
 
             try{
                 chrome.runtime.sendMessage({ action: "generateEmail", data: isSupportMessage }, function(response) {
@@ -248,16 +266,16 @@ function createEmail(emailContent, emailAddress) {
         const recipientDiv = document.querySelector(`.token-input.ui-autocomplete-input`)
         const removeEmailButton = document.querySelector(`.token > a.close`)
 
-        if (recipientDiv) {
+        if(emailAddress === 'xxx'){
+            //do nothing
+        } else {
             if (removeEmailButton){
                 removeEmailButton.click();
                 recipientDiv.value = emailAddress
             } else {
                 recipientDiv.value = emailAddress
             }
-
         }
-
 
         if (emailEditorDiv) {
             const formattedEmailContent = `
